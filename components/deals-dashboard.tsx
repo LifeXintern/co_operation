@@ -1171,6 +1171,11 @@ function SankeyDiagram({ deals, startDate, endDate }: { deals: Deal[]; startDate
 }
 
 export function DealsDashboard() {
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "new-deals" | "brokers" | "pipeline" | "weekly-analysis"
+  >("overview");
+
+  const dashboardTopRef = useRef<HTMLDivElement | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2357,7 +2362,10 @@ export function DealsDashboard() {
         </div>
       </header>
 
-      <div className="relative z-40 container mx-auto p-8 space-y-8">
+      <div
+  ref={dashboardTopRef}
+  className="relative z-40 container mx-auto p-8 space-y-8"
+>
         <Card className="bg-white/95 backdrop-blur-xl border-0 shadow-2xl shadow-violet/10 ring-1 ring-violet/20">
           <CardHeader className="pb-6">
             <div className="flex items-center justify-between">
@@ -2532,7 +2540,21 @@ export function DealsDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="overview">
+        <Tabs  value={activeTab}
+  onValueChange={(value) => {
+    setActiveTab(value as typeof activeTab);
+
+    // 切 Tab 时滚到 Dashboard 顶部
+    if (dashboardTopRef.current) {
+      dashboardTopRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else {
+      // 兜底：万一 ref 没绑上
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }}defaultValue="overview">
           <TabsList className="grid w-full grid-cols-5 bg-white/95 backdrop-blur-xl border-0 shadow-xl shadow-violet/10 ring-1 ring-violet/20 p-1 rounded-2xl h-12">
             <TabsTrigger 
               value="overview" 
