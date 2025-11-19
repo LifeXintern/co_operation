@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ChartComment } from "@/components/chart-comment"
 import { ArrowUp, ArrowDown, TrendingUp, Users, DollarSign, FileText, RotateCcw, Calendar } from "lucide-react"
 
@@ -23,6 +24,10 @@ interface Deal {
   "4. Loan Document": string | null;
   "5. Settlement Queue": string | null;
   "6. Settled": string | null;
+  "2025 Settlement"?: string | null;
+  "2024 Settlement"?: string | null;
+  "From Rednote?"?: string | null;
+  "From LifeX?"?: string | null;
   latest_date: string | null;
   status: string;
 }
@@ -162,6 +167,50 @@ export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Dea
   // Use allDeals when showAllData is true, otherwise use filteredDeals
   const dataToUse = showAllData ? allDeals : filteredDeals;
 
+  // Calculate all deals details (source distribution) for a specific week
+  const getWeekAllDealsDetails = useMemo(() => {
+    const weeklyGroups = dataToUse.reduce((acc, deal) => {
+      const dateKey = deal.latest_date || deal["6. Settled"] || deal.created_time;
+      if (dateKey) {
+        try {
+          const weekStartDate = getWeekStartDate(dateKey);
+          if (!acc[weekStartDate]) {
+            acc[weekStartDate] = [];
+          }
+          acc[weekStartDate].push(deal);
+        } catch (e) {
+          console.error(`Invalid date for deal ${deal.deal_id}: ${dateKey}`);
+        }
+      }
+      return acc;
+    }, {} as Record<string, Deal[]>);
+
+    const result: Record<string, { total: number; sourceDistribution: Array<{ label: string; value: number; color: string }> }> = {};
+
+    Object.entries(weeklyGroups).forEach(([week, dealsInWeek]) => {
+      const total = dealsInWeek.length;
+
+      // Calculate source distribution for all deals
+      const sourceCounts = dealsInWeek.reduce((acc, deal) => {
+        const isRedNote = deal["From Rednote?"] === "Yes";
+        const isLifeX = deal["From LifeX?"] === "Yes";
+        const source = isRedNote ? "RedNote" : isLifeX ? "LifeX" : "Referral";
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const sourceDistribution = [
+        { label: "RedNote", value: sourceCounts["RedNote"] || 0, color: "#EF3C99" },
+        { label: "LifeX", value: sourceCounts["LifeX"] || 0, color: "#751FAE" },
+        { label: "Referral", value: sourceCounts["Referral"] || 0, color: "#3CBDE5" },
+      ].filter(item => item.value > 0);
+
+      result[week] = { total, sourceDistribution };
+    });
+
+    return result;
+  }, [dataToUse]);
+
   // Calculate settled deals details for a specific week
   const getWeekSettledDetails = useMemo(() => {
     const weeklyGroups = dataToUse.reduce((acc, deal) => {
@@ -181,11 +230,11 @@ export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Dea
     }, {} as Record<string, Deal[]>);
 
     const result: Record<string, { totalSettled: number; sourceDistribution: Array<{ label: string; value: number; color: string }> }> = {};
-    
+
     Object.entries(weeklyGroups).forEach(([week, dealsInWeek]) => {
       const settledDeals = dealsInWeek.filter(d => d["6. Settled"] && d["6. Settled"].trim() !== "");
       const totalSettled = settledDeals.length;
-      
+
       // Calculate source distribution for settled deals
       const sourceCounts = settledDeals.reduce((acc, deal) => {
         const isRedNote = deal["From Rednote?"] === "Yes";
@@ -305,15 +354,10 @@ export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Dea
             <Button
               variant={showAllData ? "default" : "outline"}
               size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                const currentScrollY = window.scrollY;
+              onClick={() => {
                 setShowAllData(!showAllData);
-                // Restore scroll position after state update
-                setTimeout(() => {
-                  window.scrollTo(0, currentScrollY);
-                }, 0);
               }}
+              className="flex items-center gap-2"
             >
               <RotateCcw className="h-4 w-4" />
               {showAllData ? 'Apply Filters' : 'Clear Filters'}
@@ -364,21 +408,63 @@ export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Dea
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {weeklyData.map((stat) => {
               const weekDetails = getWeekSettledDetails[stat.week];
-              
+              const weekAllDealsDetails = getWeekAllDealsDetails[stat.week];
+
               return (
                 <Card key={stat.week} className="bg-white/60 border-violet/20 shadow-sm hover:shadow-lg transition-shadow duration-300">
                   <CardHeader>
                     <CardTitle className="text-violet">Week of {stat.week}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <MetricDisplay title="Total Deals" value={stat.totalDeals.toString()} change={stat.totalDealsChange} icon={FileText} />
+                    {/* Total Deals with Tooltip */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <MetricDisplay
+                              title="Total Deals"
+                              value={stat.totalDeals.toString()}
+                              change={stat.totalDealsChange}
+                              icon={FileText}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        {weekAllDealsDetails && weekAllDealsDetails.sourceDistribution.length > 0 && (
+                          <TooltipContent className="bg-white border-violet/30 shadow-lg p-4">
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold text-violet mb-2">
+                                Source Breakdown
+                              </h4>
+                              {weekAllDealsDetails.sourceDistribution.map((source, index) => {
+                                const percentage = weekAllDealsDetails.total > 0 ? (source.value / weekAllDealsDetails.total) * 100 : 0;
+                                return (
+                                  <div key={index} className="flex items-center justify-between text-xs gap-4">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: source.color }}
+                                      />
+                                      <span className="text-violet/80 font-medium">{source.label}</span>
+                                    </div>
+                                    <span className="text-violet/70 font-semibold">
+                                      {source.value} ({percentage.toFixed(1)}%)
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+
                     <MetricDisplay title="Conversion Rate" value={`${stat.conversionRate.toFixed(1)}%`} change={stat.conversionRateChange} icon={Users} isRate />
-                    <MetricDisplay 
-                      title="Settled Rate" 
-                      value={`${stat.settledRate.toFixed(1)}%`} 
-                      change={stat.settledRateChange} 
-                      icon={TrendingUp} 
-                      isRate 
+                    <MetricDisplay
+                      title="Settled Rate"
+                      value={`${stat.settledRate.toFixed(1)}%`}
+                      change={stat.settledRateChange}
+                      icon={TrendingUp}
+                      isRate
                     />
                     <MetricDisplay title="Settled Value" value={formatCurrency(stat.settledValue)} change={stat.settledValueChange} icon={DollarSign} isCurrency />
                     
