@@ -602,27 +602,45 @@ function DoubleRingPieChart({ outerData = [], innerData = [], size = 300 }: { ou
   );
 }
 
-function BrokerPerformanceTable({ brokers }: { brokers: Array<{ 
-  name: string; 
-  total: number; 
-  settled: number; 
-  value: number; 
-  converted: number;
-  conversionRate: string;
-  settledRate: string; 
-  sourceBreakdown?: Array<{
-    source: string;
+function BrokerPerformanceTable({
+  brokers,
+}: {
+  brokers: Array<{
+    name: string;
     total: number;
+    settled: number;
+    value: number;
     converted: number;
     conversionRate: string;
-    settled: number;
     settledRate: string;
-    value: number;
-  }> 
-}> }) {
+    inProgress: number;
+    inProgressConverted: number;
+    lost: number;
+    lostConverted: number;
+    sourceBreakdown?: Array<{
+      source: string;
+      total: number;
+      converted: number;
+      conversionRate: string;
+      settled: number;
+      settledRate: string;
+      value: number;
+      inProgress: number;
+      inProgressConverted: number;
+      lost: number;
+      lostConverted: number;
+    }>;
+  }>;
+}) {
   const [showSourceBreakdown, setShowSourceBreakdown] = useState(false);
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: "AUD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
 
   return (
     <Card className="bg-white/60 border-violet/20 shadow-sm mt-4">
@@ -631,17 +649,18 @@ function BrokerPerformanceTable({ brokers }: { brokers: Array<{
           <div>
             <CardTitle className="text-violet">Broker Performance</CardTitle>
             <CardDescription className="text-violet/80">
-              Performance metrics for each broker. Total brokers: {brokers.length}, 
-              Total deals: {brokers.reduce((sum, broker) => sum + broker.total, 0)}
+              Performance metrics for each broker. Total brokers:{" "}
+              {brokers.length}, Total deals:{" "}
+              {brokers.reduce((sum, broker) => sum + broker.total, 0)}
             </CardDescription>
           </div>
           <Button
-            variant={showSourceBreakdown ? "outline" : "default"}
+            variant={showSourceBreakdown ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowSourceBreakdown(!showSourceBreakdown)}
+            onClick={() => setShowSourceBreakdown((prev) => !prev)}
             className="ml-4"
           >
-            {showSourceBreakdown ? "Source Breakdown" : "Total"}
+            {showSourceBreakdown ? "Source breakdown" : "Total only"}
           </Button>
         </div>
       </CardHeader>
@@ -651,52 +670,84 @@ function BrokerPerformanceTable({ brokers }: { brokers: Array<{
             <TableRow>
               <TableHead>Broker</TableHead>
               <TableHead>Total Deals</TableHead>
-              <TableHead>Converted Deals</TableHead>
+              <TableHead>Converted Deals (Total)</TableHead>
+              <TableHead>In Progress (Total / converted)</TableHead>
+              <TableHead>Settled</TableHead>
+              <TableHead>Lost (Total / converted)</TableHead>
               <TableHead>Conversion Rate</TableHead>
-              <TableHead>Settled Deals</TableHead>
               <TableHead>Settled Rate</TableHead>
-              <TableHead>Total Value Settled</TableHead>
-              <TableHead>In Progress</TableHead>
-              <TableHead>Lost Deals</TableHead>
+              <TableHead>Value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {brokers.map((broker) => (
               <React.Fragment key={broker.name}>
                 <TableRow className="font-medium">
-                  <TableCell className="font-bold text-deep-purple-text">{broker.name}</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.total}</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.converted}</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.conversionRate}%</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.settled}</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.settledRate}%</TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{formatCurrency(broker.value)}</TableCell>
                   <TableCell className="font-bold text-deep-purple-text">
-                    {broker.inProgress}
-                    {broker.inProgressConverted > 0 && (
-                      <span className="ml-1">({broker.inProgressConverted})</span>
-                    )}
+                    {broker.name}
                   </TableCell>
-                  <TableCell className="font-bold text-deep-purple-text">{broker.lost}</TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.total}
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.converted}
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.inProgress} / {broker.inProgressConverted}
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.settled}
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.lost} / {broker.lostConverted}
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.conversionRate}%
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {broker.settledRate}%
+                  </TableCell>
+                  <TableCell className="font-bold text-deep-purple-text">
+                    {formatCurrency(broker.value)}
+                  </TableCell>
                 </TableRow>
-                {showSourceBreakdown && broker.sourceBreakdown && broker.sourceBreakdown.map((source) => (
-                  <TableRow key={`${broker.name}-${source.source}`} className="bg-gray-50/50">
-                    <TableCell className="pl-8 text-sm text-deep-purple-text/80">{source.source}</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.total}</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.converted}</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.conversionRate}%</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.settled}</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.settledRate}%</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{formatCurrency(source.value)}</TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">
-                      {source.inProgress}
-                      {source.inProgressConverted > 0 && (
-                        <span className="ml-1">({source.inProgressConverted})</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-deep-purple-text/80">{source.lost}</TableCell>
-                  </TableRow>
-                ))}
+
+                {showSourceBreakdown &&
+                  broker.sourceBreakdown &&
+                  broker.sourceBreakdown.map((source) => (
+                    <TableRow
+                      key={`${broker.name}-${source.source}`}
+                      className="bg-gray-50/50"
+                    >
+                      <TableCell className="pl-8 text-sm text-deep-purple-text/80">
+                        {source.source}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.total}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.converted}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.inProgress} / {source.inProgressConverted}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.settled}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.lost} / {source.lostConverted}
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.conversionRate}%
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {source.settledRate}%
+                      </TableCell>
+                      <TableCell className="text-sm text-deep-purple-text/80">
+                        {formatCurrency(source.value)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </React.Fragment>
             ))}
           </TableBody>
@@ -1604,114 +1655,232 @@ export function DealsDashboard() {
   }, [filteredDealsForKPI]);
 
   const brokers = useMemo(() => {
-    const brokerStats = filteredDeals.reduce((acc, deal) => {
-      if (!acc[deal.broker_name]) acc[deal.broker_name] = { total: 0, settled: 0, value: 0, converted: 0, lost: 0, inProgress: 0, inProgressConverted: 0 };
-      acc[deal.broker_name].total++;
+    const brokerStats = filteredDeals.reduce(
+      (acc, deal) => {
+        if (!acc[deal.broker_name]) {
+          acc[deal.broker_name] = {
+            total: 0,
+            settled: 0,
+            value: 0,
+            converted: 0,
+            lost: 0,
+            lostConverted: 0,
+            inProgress: 0,
+            inProgressConverted: 0,
+          };
+        }
 
-      // Check if deal is converted (has entered any processing stage)
-      const isConverted = (deal["1. Application"] && deal["1. Application"].trim() !== "") ||
-        (deal["2. Assessment"] && deal["2. Assessment"].trim() !== "") ||
-        (deal["3. Approval"] && deal["3. Approval"].trim() !== "") ||
-        (deal["4. Loan Document"] && deal["4. Loan Document"].trim() !== "") ||
-        (deal["5. Settlement Queue"] && deal["5. Settlement Queue"].trim() !== "") ||
-        (deal["6. Settled"] && deal["6. Settled"].trim() !== "") ||
-        (deal["2025 Settlement"] && deal["2025 Settlement"].trim() !== "") ||
-        (deal["2024 Settlement"] && deal["2024 Settlement"].trim() !== "");
+        const stats = acc[deal.broker_name];
 
-      if (isConverted) {
-        acc[deal.broker_name].converted++;
-      }
+        stats.total++;
 
-      // Check if deal is lost
-      const isSettled = deal["6. Settled"] && deal["6. Settled"].trim() !== "";
-      const isLost = deal.status === "Lost";
+        // 是否进入过任一阶段 → 视为 converted
+        const isConverted =
+          (deal["1. Application"] && deal["1. Application"].trim() !== "") ||
+          (deal["2. Assessment"] && deal["2. Assessment"].trim() !== "") ||
+          (deal["3. Approval"] && deal["3. Approval"].trim() !== "") ||
+          (deal["4. Loan Document"] && deal["4. Loan Document"].trim() !== "") ||
+          (deal["5. Settlement Queue"] && deal["5. Settlement Queue"].trim() !== "") ||
+          (deal["6. Settled"] && deal["6. Settled"].trim() !== "") ||
+          (deal["2025 Settlement"] && deal["2025 Settlement"].trim() !== "") ||
+          (deal["2024 Settlement"] && deal["2024 Settlement"].trim() !== "");
 
-      if (isLost) {
-        acc[deal.broker_name].lost++;
-      } else if (!isSettled) {
-        // Deal is in progress (not lost and not settled)
-        acc[deal.broker_name].inProgress++;
         if (isConverted) {
-          acc[deal.broker_name].inProgressConverted++;
+          stats.converted++;
         }
-      }
 
-      if (isSettled) {
-        acc[deal.broker_name].settled++;
-        acc[deal.broker_name].value += deal.deal_value || 0;
-      }
-      return acc;
-    }, {} as Record<string, { total: number; settled: number; value: number; converted: number; lost: number; inProgress: number; inProgressConverted: number }>);
-    
-    return Object.entries(brokerStats).map(([name, stats]) => {
-      // Calculate source breakdown for this broker
-      const brokerDeals = filteredDeals.filter(deal => deal.broker_name === name);
-      
-      const sourceBreakdown = [
-        {
-          source: "RedNote",
-          deals: brokerDeals.filter(d => d["From Rednote?"] === "Yes")
-        },
-        {
-          source: "LifeX",
-          deals: brokerDeals.filter(d => d["From LifeX?"] === "Yes")
-        },
-        {
-          source: "Referral",
-          deals: brokerDeals.filter(d => d["From Rednote?"] === "No" && d["From LifeX?"] === "No")
+        const isSettled = deal["6. Settled"] && deal["6. Settled"].trim() !== "";
+        const isLost = deal.status === "Lost";
+
+        if (isLost) {
+          stats.lost++;
+          // ⭐ 新增：converted 之后 Lost 的数量
+          if (isConverted) {
+            stats.lostConverted++;
+          }
+        } else if (!isSettled) {
+          stats.inProgress++;
+          if (isConverted) {
+            stats.inProgressConverted++;
+          }
         }
-      ].map(sourceData => {
-        const total = sourceData.deals.length;
-        const settled = sourceData.deals.filter(d => d["6. Settled"] && d["6. Settled"].trim() !== "").length;
-        const converted = sourceData.deals.filter(d => 
-          (d["1. Application"] && d["1. Application"].trim() !== "") ||
-          (d["2. Assessment"] && d["2. Assessment"].trim() !== "") ||
-          (d["3. Approval"] && d["3. Approval"].trim() !== "") ||
-          (d["4. Loan Document"] && d["4. Loan Document"].trim() !== "") ||
-          (d["5. Settlement Queue"] && d["5. Settlement Queue"].trim() !== "") ||
-          (d["6. Settled"] && d["6. Settled"].trim() !== "") ||
-          (d["2025 Settlement"] && d["2025 Settlement"].trim() !== "") ||
-          (d["2024 Settlement"] && d["2024 Settlement"].trim() !== "")
-        ).length;
-        const lost = sourceData.deals.filter(d => d.status === "Lost").length;
-        const value = sourceData.deals.filter(d => d["6. Settled"] && d["6. Settled"].trim() !== "")
-          .reduce((sum, deal) => sum + (deal.deal_value || 0), 0);
-        const inProgress = total - settled - lost;
-        const inProgressDeals = sourceData.deals.filter(d =>
-          d.status !== "Lost" && !(d["6. Settled"] && d["6. Settled"].trim() !== ""));
-        const inProgressConverted = inProgressDeals.filter(d =>
-          (d["1. Application"] && d["1. Application"].trim() !== "") ||
-          (d["2. Assessment"] && d["2. Assessment"].trim() !== "") ||
-          (d["3. Approval"] && d["3. Approval"].trim() !== "") ||
-          (d["4. Loan Document"] && d["4. Loan Document"].trim() !== "") ||
-          (d["5. Settlement Queue"] && d["5. Settlement Queue"].trim() !== "") ||
-          (d["2025 Settlement"] && d["2025 Settlement"].trim() !== "") ||
-          (d["2024 Settlement"] && d["2024 Settlement"].trim() !== "")
-        ).length;
+
+        if (isSettled) {
+          stats.settled++;
+          stats.value += deal.deal_value || 0;
+        }
+
+        return stats && acc;
+      },
+      {} as Record<
+        string,
+        {
+          total: number;
+          settled: number;
+          value: number;
+          converted: number;
+          lost: number;
+          lostConverted: number;
+          inProgress: number;
+          inProgressConverted: number;
+        }
+      >
+    );
+
+    return Object.entries(brokerStats)
+      .map(([name, stats]) => {
+        // 这一 broker 相关的全部 deals
+        const brokerDeals = filteredDeals.filter(
+          (deal) => deal.broker_name === name
+        );
+
+        // 按来源拆分
+        const sourceBreakdown = [
+          {
+            source: "RedNote",
+            deals: brokerDeals.filter((d) => d["From Rednote?"] === "Yes"),
+          },
+          {
+            source: "LifeX",
+            deals: brokerDeals.filter((d) => d["From LifeX?"] === "Yes"),
+          },
+          {
+            source: "Referral",
+            deals: brokerDeals.filter(
+              (d) =>
+                d["From Rednote?"] === "No" && d["From LifeX?"] === "No"
+            ),
+          },
+        ]
+          .map((sourceData) => {
+            const total = sourceData.deals.length;
+
+            const settled = sourceData.deals.filter(
+              (d) =>
+                d["6. Settled"] && d["6. Settled"].trim() !== ""
+            ).length;
+
+            const converted = sourceData.deals.filter((d) =>
+              (d["1. Application"] &&
+                d["1. Application"].trim() !== "") ||
+              (d["2. Assessment"] &&
+                d["2. Assessment"].trim() !== "") ||
+              (d["3. Approval"] &&
+                d["3. Approval"].trim() !== "") ||
+              (d["4. Loan Document"] &&
+                d["4. Loan Document"].trim() !== "") ||
+              (d["5. Settlement Queue"] &&
+                d["5. Settlement Queue"].trim() !== "") ||
+              (d["6. Settled"] &&
+                d["6. Settled"].trim() !== "") ||
+              (d["2025 Settlement"] &&
+                d["2025 Settlement"].trim() !== "") ||
+              (d["2024 Settlement"] &&
+                d["2024 Settlement"].trim() !== "")
+            ).length;
+
+            const lostDeals = sourceData.deals.filter(
+              (d) => d.status === "Lost"
+            );
+            const lost = lostDeals.length;
+
+            const lostConverted = lostDeals.filter((d) =>
+              (d["1. Application"] &&
+                d["1. Application"].trim() !== "") ||
+              (d["2. Assessment"] &&
+                d["2. Assessment"].trim() !== "") ||
+              (d["3. Approval"] &&
+                d["3. Approval"].trim() !== "") ||
+              (d["4. Loan Document"] &&
+                d["4. Loan Document"].trim() !== "") ||
+              (d["5. Settlement Queue"] &&
+                d["5. Settlement Queue"].trim() !== "") ||
+              (d["6. Settled"] &&
+                d["6. Settled"].trim() !== "") ||
+              (d["2025 Settlement"] &&
+                d["2025 Settlement"].trim() !== "") ||
+              (d["2024 Settlement"] &&
+                d["2024 Settlement"].trim() !== "")
+            ).length;
+
+            const value = sourceData.deals
+              .filter(
+                (d) =>
+                  d["6. Settled"] &&
+                  d["6. Settled"].trim() !== ""
+              )
+              .reduce(
+                (sum, deal) => sum + (deal.deal_value || 0),
+                0
+              );
+
+            const inProgress = total - settled - lost;
+
+            const inProgressDeals = sourceData.deals.filter(
+              (d) =>
+                d.status !== "Lost" &&
+                !(
+                  d["6. Settled"] &&
+                  d["6. Settled"].trim() !== ""
+                )
+            );
+
+            const inProgressConverted = inProgressDeals.filter((d) =>
+              (d["1. Application"] &&
+                d["1. Application"].trim() !== "") ||
+              (d["2. Assessment"] &&
+                d["2. Assessment"].trim() !== "") ||
+              (d["3. Approval"] &&
+                d["3. Approval"].trim() !== "") ||
+              (d["4. Loan Document"] &&
+                d["4. Loan Document"].trim() !== "") ||
+              (d["5. Settlement Queue"] &&
+                d["5. Settlement Queue"].trim() !== "") ||
+              (d["2025 Settlement"] &&
+                d["2025 Settlement"].trim() !== "") ||
+              (d["2024 Settlement"] &&
+                d["2024 Settlement"].trim() !== "")
+            ).length;
+
+            return {
+              source: sourceData.source,
+              total,
+              converted,
+              conversionRate:
+                total > 0
+                  ? ((converted / total) * 100).toFixed(1)
+                  : "0",
+              settled,
+              settledRate:
+                total > 0
+                  ? ((settled / total) * 100).toFixed(1)
+                  : "0",
+              value,
+              lost,
+              lostConverted,
+              inProgress,
+              inProgressConverted,
+            };
+          })
+          .filter((s) => s.total > 0);
 
         return {
-          source: sourceData.source,
-          total,
-          converted,
-          conversionRate: total > 0 ? ((converted / total) * 100).toFixed(1) : "0",
-          lost,
-          settled,
-          settledRate: total > 0 ? ((settled / total) * 100).toFixed(1) : "0",
-          value,
-          inProgress,
-          inProgressConverted
+          name,
+          ...stats,
+          conversionRate:
+            stats.total > 0
+              ? ((stats.converted / stats.total) * 100).toFixed(1)
+              : "0",
+          settledRate:
+            stats.total > 0
+              ? ((stats.settled / stats.total) * 100).toFixed(1)
+              : "0",
+          sourceBreakdown,
         };
-      }).filter(s => s.total > 0); // Only include sources with deals
-      
-      return {
-        name,
-        ...stats,
-        conversionRate: stats.total > 0 ? ((stats.converted / stats.total) * 100).toFixed(1) : "0",
-        settledRate: stats.total > 0 ? ((stats.settled / stats.total) * 100).toFixed(1) : "0",
-        sourceBreakdown
-      };
-    }).sort((a, b) => b.value - a.value);
+      })
+      .sort((a, b) => b.value - a.value);
   }, [filteredDeals]);
+
 
   const brokerWeeklyAverage = useMemo(() => {
     if (deals.length === 0) return {};
