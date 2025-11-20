@@ -2768,18 +2768,20 @@ export function DealsDashboard() {
                   <div className="flex flex-col">
                     <h3 className="font-semibold mb-2 text-center text-lg text-violet">Lead Sources</h3>
                     <p className="text-center text-sm text-violet/70 mb-4">Total: {leadSourcesData.reduce((sum, item) => sum + item.value, 0)} deals</p>
-                    <div className="flex-grow flex items-center justify-center min-h-[350px]">
-                      <PieChart data={leadSourcesData} size={350} />
-                    </div>
-                    <ChartComment chartId="lead-sources" chartTitle="Lead Sources" />
+                    <ChartComment chartId="lead-sources" chartTitle="Lead Sources">
+                      <div className="flex-grow flex items-center justify-center min-h-[350px]">
+                        <PieChart data={leadSourcesData} size={350} />
+                      </div>
+                    </ChartComment>
                   </div>
                   <div className="flex flex-col">
                     <h3 className="font-semibold mb-2 text-center text-lg text-violet">Broker Distribution</h3>
                     <p className="text-center text-sm text-violet/70 mb-4">Total: {brokerDistributionData.outerData.reduce((sum, item) => sum + item.value, 0)} deals</p>
-                    <div className="flex-grow flex items-center justify-center min-h-[350px]">
-                      <DoubleRingPieChart outerData={brokerDistributionData.outerData} innerData={brokerDistributionData.innerData} size={350} />
-                    </div>
-                    <ChartComment chartId="broker-distribution" chartTitle="Broker Distribution" />
+                    <ChartComment chartId="broker-distribution" chartTitle="Broker Distribution">
+                      <div className="flex-grow flex items-center justify-center min-h-[350px]">
+                        <DoubleRingPieChart outerData={brokerDistributionData.outerData} innerData={brokerDistributionData.innerData} size={350} />
+                      </div>
+                    </ChartComment>
                   </div>
                 </div>
                 
