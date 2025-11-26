@@ -86,7 +86,7 @@ export function ChartComment({ chartId, chartTitle, children }: ChartCommentProp
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 placeholder="Add your analysis and insights about this chart..."
-                className="min-h-[150px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400 bg-white"
+                className="min-h-[150px] resize-none border-blue-200 focus:border-blue-400 focus:ring-blue-400 bg-white text-black"
                 autoFocus
               />
               <div className="flex items-center gap-2">
