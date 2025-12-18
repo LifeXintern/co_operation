@@ -1237,6 +1237,7 @@ export function DealsDashboard() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<string>("2025");
 
   // Helper functions for week navigation
   const getWeekStart = (date: Date): string => {
@@ -1986,6 +1987,137 @@ export function DealsDashboard() {
     }).filter((item) => item.value > 0)
      .sort((a, b) => b.value - a.value);
   }, [filteredDeals]);
+
+  // Per-source weekly averages for Lead Sources section
+  const sourceWeeklyAverages = useMemo(() => {
+    // Filter deals by selected year (same logic as weekly-analysis)
+    const dealsToUse = selectedYear === "all" ? deals : deals.filter(deal => {
+      const dateKey = deal.latest_date || deal["6. Settled"] || deal.created_time;
+      if (!dateKey) return false;
+      try {
+        const dealYear = new Date(dateKey).getFullYear().toString();
+        return dealYear === selectedYear;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    if (dealsToUse.length === 0) return null;
+
+    // Group deals by week
+    const weeklyGroups: Record<string, Deal[]> = {};
+    dealsToUse.forEach(deal => {
+      const dateKey = deal.latest_date || deal["6. Settled"] || deal.created_time;
+      if (dateKey) {
+        try {
+          const date = new Date(dateKey);
+          const weekStart = getWeekStart(date);
+          if (!weeklyGroups[weekStart]) {
+            weeklyGroups[weekStart] = [];
+          }
+          weeklyGroups[weekStart].push(deal);
+        } catch (e) {
+          // Skip invalid dates
+        }
+      }
+    });
+
+    const weeks = Object.keys(weeklyGroups);
+    const totalWeeks = weeks.length;
+    if (totalWeeks === 0) return null;
+
+    // Same isConverted logic as leadSourcesData
+    const isConverted = (d: Deal) =>
+      (d["1. Application"] && d["1. Application"].trim() !== "") ||
+      (d["2. Assessment"] && d["2. Assessment"].trim() !== "") ||
+      (d["3. Approval"] && d["3. Approval"].trim() !== "") ||
+      (d["4. Loan Document"] && d["4. Loan Document"].trim() !== "") ||
+      (d["5. Settlement Queue"] && d["5. Settlement Queue"].trim() !== "") ||
+      (d["6. Settled"] && d["6. Settled"].trim() !== "") ||
+      (d["2025 Settlement"] && d["2025 Settlement"].trim() !== "") ||
+      (d["2024 Settlement"] && d["2024 Settlement"].trim() !== "");
+
+    // Same isSettled logic as leadSourcesData
+    const isSettled = (d: Deal) => d["6. Settled"] && d["6. Settled"].trim() !== "";
+
+    // Classify deal source (same logic as leadSourcesData)
+    const getSource = (deal: Deal): 'referral' | 'redNote' | 'lifeX' => {
+      if (deal["From Rednote?"] === "Yes") return 'redNote';
+      if (deal["From LifeX?"] === "Yes") return 'lifeX';
+      return 'referral';
+    };
+
+    // Accumulate per-source sums across all weeks
+    const sourceSums = {
+      referral: { deals: 0, share: 0, converted: 0, conversionRate: 0, settled: 0, settledRate: 0 },
+      redNote: { deals: 0, share: 0, converted: 0, conversionRate: 0, settled: 0, settledRate: 0 },
+      lifeX: { deals: 0, share: 0, converted: 0, conversionRate: 0, settled: 0, settledRate: 0 },
+    };
+
+    // For each week, compute per-source contributions
+    weeks.forEach(week => {
+      const dealsInWeek = weeklyGroups[week];
+      const totalDealsWeek = dealsInWeek.length;
+
+      // Group deals by source for this week
+      const sourceDeals = {
+        referral: [] as Deal[],
+        redNote: [] as Deal[],
+        lifeX: [] as Deal[],
+      };
+
+      dealsInWeek.forEach(deal => {
+        const source = getSource(deal);
+        sourceDeals[source].push(deal);
+      });
+
+      // Compute per-source metrics for this week
+      (['referral', 'redNote', 'lifeX'] as const).forEach(source => {
+        const sDeals = sourceDeals[source];
+        const sourceDealsWeek = sDeals.length;
+        const sourceShareWeek = totalDealsWeek > 0 ? sourceDealsWeek / totalDealsWeek : 0;
+        const sourceConvertedWeek = sDeals.filter(isConverted).length;
+        const sourceConversionRateWeek = sourceDealsWeek > 0 ? sourceConvertedWeek / sourceDealsWeek : 0;
+        const sourceSettledWeek = sDeals.filter(isSettled).length;
+        const sourceSettledRateWeek = sourceDealsWeek > 0 ? sourceSettledWeek / sourceDealsWeek : 0;
+
+        sourceSums[source].deals += sourceDealsWeek;
+        sourceSums[source].share += sourceShareWeek;
+        sourceSums[source].converted += sourceConvertedWeek;
+        sourceSums[source].conversionRate += sourceConversionRateWeek;
+        sourceSums[source].settled += sourceSettledWeek;
+        sourceSums[source].settledRate += sourceSettledRateWeek;
+      });
+    });
+
+    // Compute averages using same totalWeeks for all sources
+    return {
+      referral: {
+        avgDeals: sourceSums.referral.deals / totalWeeks,
+        avgShare: (sourceSums.referral.share / totalWeeks) * 100,
+        avgConverted: sourceSums.referral.converted / totalWeeks,
+        avgConversionRate: (sourceSums.referral.conversionRate / totalWeeks) * 100,
+        avgSettled: sourceSums.referral.settled / totalWeeks,
+        avgSettledRate: (sourceSums.referral.settledRate / totalWeeks) * 100,
+      },
+      redNote: {
+        avgDeals: sourceSums.redNote.deals / totalWeeks,
+        avgShare: (sourceSums.redNote.share / totalWeeks) * 100,
+        avgConverted: sourceSums.redNote.converted / totalWeeks,
+        avgConversionRate: (sourceSums.redNote.conversionRate / totalWeeks) * 100,
+        avgSettled: sourceSums.redNote.settled / totalWeeks,
+        avgSettledRate: (sourceSums.redNote.settledRate / totalWeeks) * 100,
+      },
+      lifeX: {
+        avgDeals: sourceSums.lifeX.deals / totalWeeks,
+        avgShare: (sourceSums.lifeX.share / totalWeeks) * 100,
+        avgConverted: sourceSums.lifeX.converted / totalWeeks,
+        avgConversionRate: (sourceSums.lifeX.conversionRate / totalWeeks) * 100,
+        avgSettled: sourceSums.lifeX.settled / totalWeeks,
+        avgSettledRate: (sourceSums.lifeX.settledRate / totalWeeks) * 100,
+      },
+    };
+  }, [deals, selectedYear, getWeekStart]);
 
   const newDeals = useMemo(() => {
     const filtered = deals.filter(deal => {
@@ -2772,6 +2904,34 @@ export function DealsDashboard() {
                       <div className="flex-grow flex items-center justify-center min-h-[350px]">
                         <PieChart data={leadSourcesData} size={350} />
                       </div>
+                    {/* Weekly Avg. column for Lead Sources */}
+                    {sourceWeeklyAverages && (
+                      <div className="mt-4 flex justify-center">
+                        <div className="p-3 bg-violet/5 rounded-lg border border-violet/20 w-full max-w-md">
+                        <h4 className="text-sm font-semibold text-violet mb-2">Weekly Avg. ({selectedYear === "all" ? "All Years" : selectedYear})</h4>
+                        <div className="space-y-2">
+                          {[
+                            { label: "RedNote", color: CHART_COLORS[1], data: sourceWeeklyAverages.redNote },
+                            { label: "LifeX", color: CHART_COLORS[0], data: sourceWeeklyAverages.lifeX },
+                            { label: "Referral", color: "#FF701F", data: sourceWeeklyAverages.referral },
+                          ].map((source, index) => (
+                            <div key={index} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: source.color }}
+                                />
+                                <span className="text-violet/80">{source.label}</span>
+                              </div>
+                              <span className="text-violet/70 font-medium">
+                                {source.data.avgDeals.toFixed(1)} deals ({source.data.avgShare.toFixed(1)}%) · Conv: {source.data.avgConversionRate.toFixed(1)}% · Settled: {source.data.avgSettledRate.toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      </div>
+                    )}
                     </ChartComment>
                   </div>
                   <div className="flex flex-col">
@@ -3192,7 +3352,7 @@ export function DealsDashboard() {
             </Card>
           </TabsContent>
           <TabsContent value="weekly-analysis">
-            <WeeklyAnalysis filteredDeals={filteredDeals} allDeals={deals} />
+            <WeeklyAnalysis filteredDeals={filteredDeals} allDeals={deals} selectedYear={selectedYear} onSelectedYearChange={setSelectedYear} />
           </TabsContent>
         </Tabs>
       </div>

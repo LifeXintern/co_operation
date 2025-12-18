@@ -160,9 +160,8 @@ const calculateWeeklyStats = (deals: Deal[]): WeeklyStat[] => {
 }
 
 
-export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Deal[], allDeals: Deal[] }) {
+export function WeeklyAnalysis({ filteredDeals, allDeals, selectedYear, onSelectedYearChange }: { filteredDeals: Deal[], allDeals: Deal[], selectedYear: string, onSelectedYearChange: (year: string) => void }) {
   const [showAllData, setShowAllData] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<string>("2025");
 
   // Use allDeals when showAllData is true, otherwise use filteredDeals
   const dataToUse = showAllData ? allDeals : filteredDeals;
@@ -382,7 +381,7 @@ export function WeeklyAnalysis({ filteredDeals, allDeals }: { filteredDeals: Dea
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <Select value={selectedYear} onValueChange={onSelectedYearChange}>
                       <SelectTrigger className="w-32 h-8 text-xs bg-white text-black">
                         <SelectValue />
                       </SelectTrigger>
